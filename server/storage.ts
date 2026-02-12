@@ -1,38 +1,81 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  workflows,
+  runs,
+  type CreateWorkflowRequest,
+  type WorkflowResponse,
+  type WorkflowsListResponse,
+  type RunWorkflowResponse,
+  type RunsHistoryResponse,
+} from "@shared/schema";
+import { desc, eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  listWorkflows(): Promise<WorkflowsListResponse>;
+  createWorkflow(input: CreateWorkflowRequest): Promise<WorkflowResponse>;
+  getWorkflow(id: number): Promise<WorkflowResponse | undefined>;
+
+  createRun(input: {
+    workflowId: number;
+    inputText: string;
+    stepOutputs: { stepType: string; output: string }[];
+    finalOutput: string;
+  }): Promise<RunWorkflowResponse>;
+
+  getRecentRuns(limit: number): Promise<RunsHistoryResponse>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async listWorkflows(): Promise<WorkflowsListResponse> {
+    return db.select().from(workflows).orderBy(desc(workflows.createdAt));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async createWorkflow(input: CreateWorkflowRequest): Promise<WorkflowResponse> {
+    const [created] = await db.insert(workflows).values(input).returning();
+    return created;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getWorkflow(id: number): Promise<WorkflowResponse | undefined> {
+    const [wf] = await db.select().from(workflows).where(eq(workflows.id, id));
+    return wf;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createRun(input: {
+    workflowId: number;
+    inputText: string;
+    stepOutputs: { stepType: string; output: string }[];
+    finalOutput: string;
+  }): Promise<RunWorkflowResponse> {
+    const [created] = await db
+      .insert(runs)
+      .values({
+        workflowId: input.workflowId,
+        inputText: input.inputText,
+        stepOutputs: input.stepOutputs as any,
+        finalOutput: input.finalOutput,
+      })
+      .returning();
+    return created;
+  }
+
+  async getRecentRuns(limit: number): Promise<RunsHistoryResponse> {
+    const rows = await db
+      .select({
+        id: runs.id,
+        workflowId: runs.workflowId,
+        inputText: runs.inputText,
+        stepOutputs: runs.stepOutputs,
+        finalOutput: runs.finalOutput,
+        createdAt: runs.createdAt,
+        workflowName: workflows.name,
+      })
+      .from(runs)
+      .innerJoin(workflows, eq(runs.workflowId, workflows.id))
+      .orderBy(desc(runs.createdAt))
+      .limit(limit);
+
+    return rows as any;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
