@@ -1,39 +1,83 @@
-const baseUrl = process.env.MONGODB_DATA_API_URL;
-const apiKey = process.env.MONGODB_DATA_API_KEY;
+declare const require: (id: string) => any;
 
-if (!baseUrl || !apiKey) {
-  throw new Error("MONGODB_DATA_API_URL and MONGODB_DATA_API_KEY must be set.");
+const mongoose: any = require("mongoose");
+
+const mongodbUri = process.env.MONGODB_URI;
+
+if (!mongodbUri) {
+  throw new Error("MONGODB_URI must be set.");
 }
 
-const mongoBaseUrl = baseUrl;
-const mongoApiKey = apiKey;
+const counterSchema = new mongoose.Schema(
+  {
+    _id: { type: String, required: true },
+    seq: { type: Number, required: true, default: 0 },
+  },
+  { versionKey: false },
+);
 
-export const mongoConfig = {
-  dataSource: process.env.MONGODB_DATA_SOURCE || "Cluster0",
-  database: process.env.MONGODB_DB_NAME || "workflow_builder",
-};
+const workflowStepSchema = new mongoose.Schema(
+  {
+    type: { type: String, required: true },
+  },
+  { _id: false },
+);
 
-export async function mongoAction<T>(action: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${mongoBaseUrl.replace(/\/$/, "")}/action/${action}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "api-key": mongoApiKey,
-    },
-    body: JSON.stringify({ ...mongoConfig, ...body }),
-  });
+const workflowSchema = new mongoose.Schema(
+  {
+    id: { type: Number, required: true, unique: true, index: true },
+    name: { type: String, required: true },
+    steps: { type: [workflowStepSchema], required: true },
+    createdAt: { type: Date, required: true },
+  },
+  { versionKey: false },
+);
 
-  if (!res.ok) {
-    const message = await res.text();
-    throw new Error(`MongoDB action failed: ${message || res.statusText}`);
-  }
+const runStepOutputSchema = new mongoose.Schema(
+  {
+    stepType: { type: String, required: true },
+    output: { type: String, required: true },
+    error: { type: String },
+    durationMs: { type: Number, required: true },
+    attempts: { type: Number, required: true },
+  },
+  { _id: false },
+);
 
-  return (await res.json()) as T;
+const runSchema = new mongoose.Schema(
+  {
+    id: { type: Number, required: true, unique: true, index: true },
+    workflowId: { type: Number, required: true, index: true },
+    inputText: { type: String, required: true },
+    stepOutputs: { type: [runStepOutputSchema], required: true },
+    finalOutput: { type: String, required: true },
+    createdAt: { type: Date, required: true, index: true },
+  },
+  { versionKey: false },
+);
+
+export const CounterModel = mongoose.model("Counter", counterSchema, "counters");
+export const WorkflowModel = mongoose.model("Workflow", workflowSchema, "workflows");
+export const RunModel = mongoose.model("Run", runSchema, "runs");
+
+export async function connectDatabase() {
+  await mongoose.connect(mongodbUri);
 }
 
 export async function pingDatabase() {
-  await mongoAction("findOne", {
-    collection: "workflows",
-    filter: {},
-  });
+  if (mongoose.connection.readyState !== 1) {
+    throw new Error("MongoDB is not connected");
+  }
+
+  await mongoose.connection.db?.admin().command({ ping: 1 });
+}
+
+export async function nextId(key: string): Promise<number> {
+  const result = await CounterModel.findOneAndUpdate(
+    { _id: key },
+    { $inc: { seq: 1 }, $setOnInsert: { _id: key } },
+    { upsert: true, new: true },
+  ).lean();
+
+  return result?.seq ?? 1;
 }
