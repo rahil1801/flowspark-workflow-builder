@@ -156,7 +156,8 @@ export default function AppShell({
         <footer className="mt-14 pb-10 text-xs text-muted-foreground">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Workflow Builder Lite — crafted for clarity, speed, and focus.
+              FlowSpark - Workflow Builder — crafted for clarity, speed, and focus by Rahil.
+              <a href="https://github.com/rahil1801" target="_blank"> GitHub Profile</a>
             </span>
             <button
               type="button"
