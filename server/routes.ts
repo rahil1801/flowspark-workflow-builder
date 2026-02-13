@@ -4,24 +4,29 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "./storage";
 import { runWorkflow, callLlm } from "./workflowEngine";
+import { pingDatabase } from "./db";
 
 async function seedDatabase() {
   const existing = await storage.listWorkflows();
   if (existing.length > 0) return;
 
   await storage.createWorkflow({
-    name: "Quick Summary",
-    steps: [{ type: "clean_text" }, { type: "summarize" }],
+    name: "Blog Post Analyzer",
+    steps: [{ type: "clean_text" }, { type: "summarize" }, { type: "extract_hashtags" }],
   });
 
   await storage.createWorkflow({
-    name: "Key Points",
-    steps: [{ type: "clean_text" }, { type: "extract_key_points" }],
+    name: "Resume Optimizer",
+    steps: [
+      { type: "clean_text" },
+      { type: "rewrite_professional_tone" },
+      { type: "extract_skills" },
+    ],
   });
 
   await storage.createWorkflow({
-    name: "Category Tagger",
-    steps: [{ type: "clean_text" }, { type: "tag_category" }],
+    name: "News Analyzer",
+    steps: [{ type: "summarize" }, { type: "extract_entities" }, { type: "sentiment_analysis" }],
   });
 }
 
@@ -92,7 +97,7 @@ export async function registerRoutes(
     let llm: "connected" | "error" = "connected";
 
     try {
-      await storage.listWorkflows();
+      await pingDatabase();
     } catch {
       database = "error";
     }

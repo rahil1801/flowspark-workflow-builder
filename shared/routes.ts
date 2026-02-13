@@ -22,6 +22,9 @@ export const errorSchemas = {
 const stepOutputSchema = z.object({
   stepType: z.enum(WORKFLOW_STEP_TYPES),
   output: z.string(),
+  error: z.string().optional(),
+  durationMs: z.number().nonnegative(),
+  attempts: z.number().int().positive(),
 });
 
 const runSchema = z.object({

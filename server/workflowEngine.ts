@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import pRetry from "p-retry";
 import type { WorkflowStepType } from "@shared/schema";
 
 const MODEL = "meta-llama/llama-3.1-8b-instruct";
@@ -19,6 +20,18 @@ function getPrompt(stepType: Exclude<WorkflowStepType, "clean_text">, input: str
       return `Extract the key bullet points from the following text:\n\n${input}`;
     case "tag_category":
       return `Assign a category label to this text from: Business, Tech, Health, Education, Other.\n\nText:\n${input}`;
+    case "sentiment_analysis":
+      return `Classify the sentiment (positive, neutral, negative) and explain briefly:\n\n${input}`;
+    case "rewrite_professional_tone":
+      return `Rewrite the following in a professional, polished tone while preserving meaning:\n\n${input}`;
+    case "extract_hashtags":
+      return `Extract relevant hashtags for the text. Return comma-separated hashtags only:\n\n${input}`;
+    case "translate":
+      return `Translate the following text to Spanish. Keep formatting where possible:\n\n${input}`;
+    case "extract_entities":
+      return `Extract named entities (people, organizations, locations, dates) as concise bullet points:\n\n${input}`;
+    case "extract_skills":
+      return `Extract skills from the following text. Return a concise bullet list:\n\n${input}`;
   }
 }
 
@@ -53,20 +66,48 @@ export async function callLlm(prompt: string): Promise<string> {
 
 export async function runWorkflow(steps: { type: WorkflowStepType }[], inputText: string) {
   let currentText = inputText;
-  const stepOutputs: { stepType: WorkflowStepType; output: string }[] = [];
+  const stepOutputs: {
+    stepType: WorkflowStepType;
+    output: string;
+    error?: string;
+    durationMs: number;
+    attempts: number;
+  }[] = [];
 
   for (const step of steps) {
+    const start = Date.now();
+
     if (step.type === "clean_text") {
       const out = normalizeText(currentText);
-      stepOutputs.push({ stepType: step.type, output: out });
+      stepOutputs.push({ stepType: step.type, output: out, durationMs: Date.now() - start, attempts: 1 });
       currentText = out;
       continue;
     }
 
     const prompt = getPrompt(step.type, currentText);
-    const out = await callLlm(prompt);
-    stepOutputs.push({ stepType: step.type, output: out });
-    currentText = out;
+    let attempts = 0;
+
+    try {
+      const out = await pRetry(
+        async () => {
+          attempts += 1;
+          return callLlm(prompt);
+        },
+        { retries: 2, minTimeout: 500, factor: 2 },
+      );
+      stepOutputs.push({ stepType: step.type, output: out, durationMs: Date.now() - start, attempts });
+      currentText = out;
+    } catch (err: any) {
+      const errorMessage = err?.message || "Step failed";
+      stepOutputs.push({
+        stepType: step.type,
+        output: currentText,
+        error: errorMessage,
+        durationMs: Date.now() - start,
+        attempts,
+      });
+      break;
+    }
   }
 
   return { stepOutputs, finalOutput: currentText };

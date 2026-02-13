@@ -1,80 +1,125 @@
-import { db } from "./db";
 import {
-  workflows,
-  runs,
   type CreateWorkflowRequest,
   type WorkflowResponse,
   type WorkflowsListResponse,
   type RunWorkflowResponse,
   type RunsHistoryResponse,
+  type Workflow,
+  type Run,
 } from "@shared/schema";
-import { desc, eq } from "drizzle-orm";
+import { mongoAction } from "./db";
 
 export interface IStorage {
   listWorkflows(): Promise<WorkflowsListResponse>;
   createWorkflow(input: CreateWorkflowRequest): Promise<WorkflowResponse>;
   getWorkflow(id: number): Promise<WorkflowResponse | undefined>;
-
   createRun(input: {
     workflowId: number;
     inputText: string;
-    stepOutputs: { stepType: string; output: string }[];
+    stepOutputs: {
+      stepType: string;
+      output: string;
+      error?: string;
+      durationMs: number;
+      attempts: number;
+    }[];
     finalOutput: string;
   }): Promise<RunWorkflowResponse>;
-
   getRecentRuns(limit: number): Promise<RunsHistoryResponse>;
+}
+
+async function nextId(key: string): Promise<number> {
+  const result = await mongoAction<{ document: { _id: string; seq: number } }>("findOneAndUpdate", {
+    collection: "counters",
+    filter: { _id: key },
+    update: { $inc: { seq: 1 }, $setOnInsert: { _id: key } },
+    upsert: true,
+    returnDocument: "after",
+  });
+  return result.document?.seq ?? 1;
+}
+
+function stripMongoMeta<T extends { _id?: unknown }>(doc: T): Omit<T, "_id"> {
+  const { _id, ...rest } = doc;
+  return rest;
 }
 
 export class DatabaseStorage implements IStorage {
   async listWorkflows(): Promise<WorkflowsListResponse> {
-    return db.select().from(workflows).orderBy(desc(workflows.createdAt));
+    const result = await mongoAction<{ documents: (Workflow & { _id?: unknown })[] }>("find", {
+      collection: "workflows",
+      filter: {},
+      sort: { createdAt: -1 },
+    });
+    return result.documents.map((w) => ({ ...stripMongoMeta(w), createdAt: new Date(w.createdAt) }));
   }
 
   async createWorkflow(input: CreateWorkflowRequest): Promise<WorkflowResponse> {
-    const [created] = await db.insert(workflows).values(input).returning();
+    const created: Workflow = {
+      id: await nextId("workflows"),
+      name: input.name,
+      steps: input.steps,
+      createdAt: new Date(),
+    };
+    await mongoAction("insertOne", { collection: "workflows", document: created });
     return created;
   }
 
   async getWorkflow(id: number): Promise<WorkflowResponse | undefined> {
-    const [wf] = await db.select().from(workflows).where(eq(workflows.id, id));
-    return wf;
+    const result = await mongoAction<{ document?: (Workflow & { _id?: unknown }) | null }>("findOne", {
+      collection: "workflows",
+      filter: { id },
+    });
+    if (!result.document) return undefined;
+    const wf = stripMongoMeta(result.document);
+    return { ...wf, createdAt: new Date(wf.createdAt) };
   }
 
   async createRun(input: {
     workflowId: number;
     inputText: string;
-    stepOutputs: { stepType: string; output: string }[];
+    stepOutputs: {
+      stepType: string;
+      output: string;
+      error?: string;
+      durationMs: number;
+      attempts: number;
+    }[];
     finalOutput: string;
   }): Promise<RunWorkflowResponse> {
-    const [created] = await db
-      .insert(runs)
-      .values({
-        workflowId: input.workflowId,
-        inputText: input.inputText,
-        stepOutputs: input.stepOutputs as any,
-        finalOutput: input.finalOutput,
-      })
-      .returning();
+    const created: Run = {
+      id: await nextId("runs"),
+      workflowId: input.workflowId,
+      inputText: input.inputText,
+      stepOutputs: input.stepOutputs as Run["stepOutputs"],
+      finalOutput: input.finalOutput,
+      createdAt: new Date(),
+    };
+    await mongoAction("insertOne", { collection: "runs", document: created });
     return created;
   }
 
   async getRecentRuns(limit: number): Promise<RunsHistoryResponse> {
-    const rows = await db
-      .select({
-        id: runs.id,
-        workflowId: runs.workflowId,
-        inputText: runs.inputText,
-        stepOutputs: runs.stepOutputs,
-        finalOutput: runs.finalOutput,
-        createdAt: runs.createdAt,
-        workflowName: workflows.name,
-      })
-      .from(runs)
-      .innerJoin(workflows, eq(runs.workflowId, workflows.id))
-      .orderBy(desc(runs.createdAt))
-      .limit(limit);
+    const runsResult = await mongoAction<{ documents: (Run & { _id?: unknown })[] }>("find", {
+      collection: "runs",
+      filter: {},
+      sort: { createdAt: -1 },
+      limit,
+    });
 
-    return rows as any;
+    const runs = runsResult.documents.map((r) => ({ ...stripMongoMeta(r), createdAt: new Date(r.createdAt) }));
+    const workflowIds = Array.from(new Set(runs.map((r) => r.workflowId)));
+
+    const wfResult = await mongoAction<{ documents: (Workflow & { _id?: unknown })[] }>("find", {
+      collection: "workflows",
+      filter: { id: { $in: workflowIds } },
+    });
+    const wfMap = new Map(wfResult.documents.map((w) => [w.id, w.name]));
+
+    return runs.map((r) => ({
+      ...r,
+      workflowName: wfMap.get(r.workflowId) || "Unknown workflow",
+    }));
   }
 }
 

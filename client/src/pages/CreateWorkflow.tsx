@@ -17,7 +17,19 @@ const display: Record<WorkflowStepType, string> = {
   summarize: "Summarize",
   extract_key_points: "Extract key points",
   tag_category: "Tag category",
+  sentiment_analysis: "Sentiment analysis",
+  rewrite_professional_tone: "Rewrite in professional tone",
+  extract_hashtags: "Extract hashtags",
+  translate: "Translate",
+  extract_entities: "Extract entities",
+  extract_skills: "Extract skills",
 };
+
+const templates: { name: string; steps: WorkflowStepType[] }[] = [
+  { name: "Blog Post Analyzer", steps: ["clean_text", "summarize", "extract_hashtags"] },
+  { name: "Resume Optimizer", steps: ["clean_text", "rewrite_professional_tone", "extract_skills"] },
+  { name: "News Analyzer", steps: ["summarize", "extract_entities", "sentiment_analysis"] },
+];
 
 const createSchema = api.workflows.create.input;
 
@@ -72,6 +84,12 @@ function StepPicker({
                 {t === "summarize" && "Compact the input into an executive summary."}
                 {t === "extract_key_points" && "Pull the key bullets for quick scanning."}
                 {t === "tag_category" && "Assign a category tag for sorting later."}
+                {t === "sentiment_analysis" && "Classify sentiment and provide concise rationale."}
+                {t === "rewrite_professional_tone" && "Rewrite text in a polished professional style."}
+                {t === "extract_hashtags" && "Generate relevant hashtags for social posting."}
+                {t === "translate" && "Translate into another language while preserving intent."}
+                {t === "extract_entities" && "Pull entities like people, orgs, places, dates."}
+                {t === "extract_skills" && "Extract role-specific skills from the text."}
               </div>
             </div>
           </button>
@@ -232,6 +250,32 @@ export default function CreateWorkflow() {
                     {stepsError}
                   </p>
                 ) : null}
+              </div>
+
+              <div className="pt-2">
+                <label className="text-sm font-medium">Workflow templates</label>
+                <p className="mt-1 text-xs text-muted-foreground">Quick-start from curated templates.</p>
+                <div className="mt-3 grid grid-cols-1 gap-3">
+                  {templates.map((template) => (
+                    <button
+                      key={template.name}
+                      type="button"
+                      className="rounded-2xl border bg-background/60 p-4 text-left hover:bg-background/85 transition-colors"
+                      onClick={() => {
+                        setName(template.name);
+                        setSteps(template.steps);
+                      }}
+                      data-testid={`template-${template.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      <div className="font-medium">{template.name}</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {template.steps.map((step) => (
+                          <StepTypeBadge key={`${template.name}-${step}`} type={step} />
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
