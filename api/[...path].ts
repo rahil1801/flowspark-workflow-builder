@@ -1,7 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { createServer } from "http";
-import { connectDatabase } from "../server/db";
-import { registerRoutes } from "../server/routes";
+import { connectDatabase } from "../server/db.js";
+import { registerRoutes } from "../server/routes.js";
 
 let appPromise: Promise<express.Express> | null = null;
 
