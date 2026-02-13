@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes.js";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { connectDatabase } from "./db";
+import { connectDatabase } from "./db.js";
 
 const app = express();
 const httpServer = createServer(app);
