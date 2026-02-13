@@ -6,7 +6,7 @@ import {
   type RunsHistoryResponse,
   type Workflow,
   type Run,
-} from "@shared/schema.js";
+} from "../shared/schema.js";
 import { nextId, RunModel, WorkflowModel } from "./db.js";
 
 export interface IStorage {

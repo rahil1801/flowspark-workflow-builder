@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import pRetry from "p-retry";
-import type { WorkflowStepType } from "@shared/schema.js";
+import type { WorkflowStepType } from "../shared/schema.js";
 
 const MODEL = "stepfun/step-3.5-flash:free";
 
