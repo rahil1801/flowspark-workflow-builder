@@ -1,10 +1,10 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { z } from "zod";
-import { api } from "@shared/routes";
-import { storage } from "./storage";
-import { runWorkflow, callLlm } from "./workflowEngine";
-import { pingDatabase } from "./db";
+import { api } from "@shared/routes.js";
+import { storage } from "./storage.js";
+import { runWorkflow, callLlm } from "./workflowEngine.js";
+import { pingDatabase } from "./db.js";
 
 async function seedDatabase() {
   const existing = await storage.listWorkflows();
