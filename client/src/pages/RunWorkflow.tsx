@@ -26,6 +26,7 @@ export default function RunWorkflow() {
 
   const [workflowId, setWorkflowId] = useState<string>("");
   const [inputText, setInputText] = useState("");
+  const [showJson, setShowJson] = useState(false);
 
   const selected = useMemo(() => {
     const id = Number(workflowId);
@@ -72,6 +73,11 @@ export default function RunWorkflow() {
   }
 
   const output = run.data;
+
+  function copyText(value: string, successMessage: string) {
+    navigator.clipboard.writeText(value);
+    toast({ title: successMessage });
+  }
 
   return (
     <AppShell
@@ -285,16 +291,23 @@ export default function RunWorkflow() {
                     <button
                       type="button"
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() =>
-                        navigator.clipboard.writeText(
-                          output.stepOutputs
-                            .map((s) => `[${s.stepType}]\n${s.output}\n`)
-                            .join("\n"),
-                        )
-                      }
+                      onClick={() => copyText(
+                        output.stepOutputs
+                          .map((s) => `[${s.stepType}]\n${s.output}\n`)
+                          .join("\n"),
+                        "Copied step outputs",
+                      )}
                       data-testid="run-copy-steps"
                     >
                       Copy all
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setShowJson((v) => !v)}
+                      data-testid="run-json-toggle"
+                    >
+                      {showJson ? "View text" : "View JSON"}
                     </button>
                   </div>
 
@@ -318,15 +331,22 @@ export default function RunWorkflow() {
                           <button
                             type="button"
                             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => navigator.clipboard.writeText(s.output)}
+                            onClick={() => copyText(s.output, "Step output copied")}
                             data-testid={`run-copy-step-${idx}`}
                           >
                             Copy
                           </button>
                         </div>
-                        <pre className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                          {s.output}
-                        </pre>
+                        <div className="mt-2 text-xs text-muted-foreground flex flex-wrap gap-3">
+                          <span>Duration: {s.durationMs}ms</span>
+                          <span>Attempts: {s.attempts}</span>
+                          {s.error ? <span className="text-destructive">Error: {s.error}</span> : null}
+                        </div>
+                        {showJson ? (
+                          <pre className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-foreground/90">{JSON.stringify(s, null, 2)}</pre>
+                        ) : (
+                          <pre className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{s.output}</pre>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -345,7 +365,7 @@ export default function RunWorkflow() {
                     <Button
                       variant="secondary"
                       className="rounded-xl"
-                      onClick={() => navigator.clipboard.writeText(output.finalOutput)}
+                      onClick={() => copyText(output.finalOutput, "Final output copied")}
                       data-testid="run-copy-final"
                     >
                       Copy
@@ -356,9 +376,15 @@ export default function RunWorkflow() {
                     className="mt-6 rounded-2xl border bg-background/55 p-4 sm:p-5"
                     data-testid="run-final-output"
                   >
-                    <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                      {output.finalOutput}
-                    </pre>
+                    {showJson ? (
+                      <pre className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/90">
+                        {JSON.stringify(output, null, 2)}
+                      </pre>
+                    ) : (
+                      <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                        {output.finalOutput}
+                      </pre>
+                    )}
                   </div>
                 </div>
               </Card>
