@@ -6,8 +6,8 @@ import {
   type RunsHistoryResponse,
   type Workflow,
   type Run,
-} from "@shared/schema";
-import { nextId, RunModel, WorkflowModel } from "./db";
+} from "@shared/schema.js";
+import { nextId, RunModel, WorkflowModel } from "./db.js";
 
 export interface IStorage {
   listWorkflows(): Promise<WorkflowsListResponse>;
