@@ -33,8 +33,20 @@ const templates: { name: string; steps: WorkflowStepType[] }[] = [
 
 const createSchema = api.workflows.create.input;
 
-function validateLocal(input: unknown) {
-  const result = createSchema.safeParse(input);
+// function validateLocal(input: unknown) {
+//   const result = createSchema.safeParse(input);
+//   if (!result.success) {
+//     return result.error.format();
+//   }
+//   return null;
+// }
+
+function validateLocal(input: { name: string; steps: WorkflowStepType[] }) {
+  const result = createSchema.safeParse({
+    ...input,
+    steps: input.steps.map((type) => ({ type })),
+  });
+
   if (!result.success) {
     return result.error.format();
   }
@@ -122,6 +134,7 @@ export default function CreateWorkflow() {
 
   async function onSubmit() {
     const err = validateLocal({ name, steps });
+    console.log(err)
     if (err) {
       toast({
         title: "Fix validation issues",

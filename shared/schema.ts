@@ -19,9 +19,17 @@ export const workflowStepSchema = z.object({
   type: z.enum(WORKFLOW_STEP_TYPES),
 });
 
+// export const insertWorkflowSchema = z.object({
+//   name: z.string().min(1, "Name is required"),
+//   steps: z.array(workflowStepSchema).min(2, "Minimum 2 steps").max(6, "Maximum 6 steps"),
+// });
+
 export const insertWorkflowSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  steps: z.array(workflowStepSchema).min(2, "Minimum 2 steps").max(6, "Maximum 6 steps"),
+  steps: z
+    .array(workflowStepSchema)
+    .min(2, "Select at least 2 steps")
+    .max(4, "You can select at most 4 steps"),
 });
 
 const stepOutputSchema = z.object({

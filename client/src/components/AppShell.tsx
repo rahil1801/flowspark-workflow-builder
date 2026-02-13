@@ -22,11 +22,13 @@ const nav = [
 
 function TopPill() {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground shadow-[0_10px_30px_-22px_rgba(10,20,40,0.3)] backdrop-blur">
-      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_0_4px_hsl(var(--accent)/0.18)]" />
+    // <div className="inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground shadow-[0_10px_30px_-22px_rgba(10,20,40,0.3)] backdrop-blur">
+    <div>  
+    {/* <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_0_4px_hsl(var(--accent)/0.18)]" />
       Clean minimal workflow tooling
       <span className="text-foreground/40">•</span>
-      <span className="font-medium text-foreground">Lite</span>
+      <span className="font-medium text-foreground">Lite</span> */}
+      <img src="./text-logo.png" alt="logo" height={100} width={200} className="rounded-xl"/>
     </div>
   );
 }

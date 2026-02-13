@@ -68,7 +68,7 @@ export default function Home() {
   return (
     <AppShell
       title="Workflow Builder Lite"
-      subtitle="Design tiny text workflows, run them instantly, and keep a crisp history — all in one clean place."
+      subtitle="FlowSpark helps you to design tiny text workflows, run them instantly, and keep a crisp history — all in one clean place."
       breadcrumb={[{ label: "Home" }]}
       actions={
         <div className="flex flex-col sm:flex-row gap-2">

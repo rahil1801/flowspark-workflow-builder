@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import pRetry from "p-retry";
 import type { WorkflowStepType } from "@shared/schema";
 
-const MODEL = "meta-llama/llama-3.1-8b-instruct";
+const MODEL = "stepfun/step-3.5-flash:free";
 
 function normalizeText(input: string): string {
   return input

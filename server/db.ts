@@ -1,8 +1,10 @@
-declare const require: (id: string) => any;
+// const mongoose: any = require("mongoose");
+import mongoose from 'mongoose'
+import dotenv from 'dotenv'
 
-const mongoose: any = require("mongoose");
+dotenv.config()
 
-const mongodbUri = process.env.MONGODB_URI;
+const mongodbUri: any = process.env.MONGODB_URI;
 
 if (!mongodbUri) {
   throw new Error("MONGODB_URI must be set.");
